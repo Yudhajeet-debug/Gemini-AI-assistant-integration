@@ -1,20 +1,24 @@
 import React, { useState, useEffect, useRef } from "react"
 
 // --- useTypewriter Hook ---
-function useTypewriter(text: string, speed = 30): string {
-    const [displayText, setDisplayText] = useState<string>("")
-    const [index, setIndex] = useState<number>(0)
+const useTypewriter = (text, speed = 30) => {
+    const [displayText, setDisplayText] = useState("")
+    const [index, setIndex] = useState(0)
+    const prevTextRef = useRef("")
 
     useEffect(() => {
-        setDisplayText("")
-        setIndex(0)
+        if (prevTextRef.current !== text) {
+            setDisplayText("")
+            setIndex(0)
+            prevTextRef.current = text
+        }
     }, [text])
 
     useEffect(() => {
         if (index < text.length) {
             const timeoutId = setTimeout(() => {
-                setDisplayText((prev: string) => prev + text.charAt(index))
-                setIndex((prev: number) => prev + 1)
+                setDisplayText((prev) => prev + text.charAt(index))
+                setIndex((prev) => prev + 1)
             }, speed)
             return () => clearTimeout(timeoutId)
         }
@@ -24,45 +28,31 @@ function useTypewriter(text: string, speed = 30): string {
 }
 
 // --- TypewriterMessage Component ---
-interface TypewriterMessageProps {
-    text: string
-}
-const TypewriterMessage: React.FC<TypewriterMessageProps> = ({
-    text,
-}: TypewriterMessageProps) => {
+const TypewriterMessage = ({ text }) => {
     const displayText = useTypewriter(text)
     return <>{displayText}</>
 }
 
-interface Message {
-    text: string
-    sender: "user" | "bot"
-}
+const callGeminiAPI = async (chatHistory, apiKey, userName, userGender) => {
+    // Use the correct model name for your API key!
+    const MODEL = "gemini-2.5-flash"
+    const API_URL = `https://generativelanguage.googleapis.com/v1/models/${MODEL}:generateContent?key=${apiKey}`
 
-const callGeminiAPI = async (
-    chatHistory: Message[],
-    apiKey: string,
-    userName: string,
-    userGender: string
-) => {
-    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`
-
-    const systemInstruction = {
-        parts: [
-            {
-                text: `
-                --------------------------------------------------------------------------------------------------------------------------------------------------
-                --------------------------------------------------------------------------------------------------------------------------------------------------
-                --------------------------------------------------------------------------------------------------------------------------------------------------
-`,
-            },
-        ],
-    }
-
-    const contents = chatHistory.map((msg) => ({
-        role: msg.sender === "user" ? "user" : "model",
-        parts: [{ text: msg.text }],
-    }))
+    const systemPrompt = `
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+`
+    const contents = [
+        {
+            role: "user",
+            parts: [{ text: systemPrompt }],
+        },
+        ...chatHistory.map((msg) => ({
+            role: msg.sender === "user" ? "user" : "model",
+            parts: [{ text: msg.text }],
+        })),
+    ]
 
     try {
         const response = await fetch(API_URL, {
@@ -70,15 +60,11 @@ const callGeminiAPI = async (
             headers: {
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({
-                contents,
-                systemInstruction,
-            }),
+            body: JSON.stringify({ contents }),
         })
 
         if (!response.ok) {
             const errorData = await response.json()
-            console.error("Gemini API error:", errorData)
             let errorMessage = "An unknown error occurred."
             if (errorData && errorData.error && errorData.error.message) {
                 errorMessage = errorData.error.message
@@ -96,25 +82,29 @@ const callGeminiAPI = async (
         ) {
             return data.candidates[0].content.parts[0].text
         } else {
-            console.error("Unexpected API response format:", data)
             return "Sorry, I received an unexpected response from the API."
         }
     } catch (error) {
-        console.error("Error calling Gemini API:", error)
         return "Sorry, something went wrong while connecting to the API."
     }
 }
 
 // --- GeminiChat Component for Framer ---
-
 export default function GeminiChat() {
-    const [messages, setMessages] = useState<Message[]>([])
-    const [inputValue, setInputValue] = useState<string>("")
-    const [isLoading, setIsLoading] = useState<boolean>(false)
-    const [userName, setUserName] = useState<string>("")
-    const [userGender, setUserGender] = useState<string>("") // 'male', 'female', 'other'
-    const [isConfigured, setIsConfigured] = useState<boolean>(false)
-    const messageListRef = useRef<HTMLDivElement>(null)
+    const [messages, setMessages] = useState([])
+    const [inputValue, setInputValue] = useState("")
+    const [isLoading, setIsLoading] = useState(false)
+    const [userName, setUserName] = useState("")
+    const [userGender, setUserGender] = useState("") // 'male', 'female'
+    const [isConfigured, setIsConfigured] = useState(false)
+
+    // Auto-scroll chat to bottom
+    const messagesEndRef = useRef(null)
+    useEffect(() => {
+        if (messagesEndRef.current) {
+            messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
+        }
+    }, [messages, isLoading])
 
     const handleStartChat = () => {
         if (userName.trim() && userGender) {
@@ -124,12 +114,12 @@ export default function GeminiChat() {
         }
     }
 
-    const handleSendMessage = async (): Promise<void> => {
+    const handleSendMessage = async () => {
         if (inputValue.trim()) {
             const currentInputValue = inputValue
             const newMessages = [
                 ...messages,
-                { text: currentInputValue, sender: "user" as const },
+                { text: currentInputValue, sender: "user" },
             ]
             setMessages(newMessages)
             setInputValue("")
@@ -139,7 +129,7 @@ export default function GeminiChat() {
             const API_KEY = "YOUR_GEMINI_API_KEY"
 
             if (API_KEY === "YOUR_GEMINI_API_KEY" || !API_KEY) {
-                setMessages((prevMessages: Message[]) => [
+                setMessages((prevMessages) => [
                     ...prevMessages,
                     {
                         text: "Please add your Gemini API key to use this component.",
@@ -156,20 +146,12 @@ export default function GeminiChat() {
                 )
                 setMessages([
                     ...newMessages,
-                    { text: botResponse, sender: "bot" as const },
+                    { text: botResponse, sender: "bot" },
                 ])
                 setIsLoading(false)
             }
         }
     }
-
-    // Auto-scroll to bottom on new message
-    useEffect(() => {
-        if (messageListRef.current) {
-            messageListRef.current.scrollTop =
-                messageListRef.current.scrollHeight
-        }
-    }, [messages, isLoading])
 
     if (!isConfigured) {
         return (
@@ -254,32 +236,21 @@ export default function GeminiChat() {
                         type="text"
                         placeholder="What's your name?"
                         value={userName}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                            setUserName(e.target.value)
-                        }
+                        onChange={(e) => setUserName(e.target.value)}
                         className="config-input"
                     />
                     <div className="gender-chooser">
                         <button
                             className={`gender-button ${userGender === "male" ? "selected" : ""}`}
                             onClick={() => setUserGender("male")}
-                            aria-pressed={userGender === "male"}
                         >
                             Male
                         </button>
                         <button
                             className={`gender-button ${userGender === "female" ? "selected" : ""}`}
                             onClick={() => setUserGender("female")}
-                            aria-pressed={userGender === "female"}
                         >
                             Female
-                        </button>
-                        <button
-                            className={`gender-button ${userGender === "other" ? "selected" : ""}`}
-                            onClick={() => setUserGender("other")}
-                            aria-pressed={userGender === "other"}
-                        >
-                            Other
                         </button>
                     </div>
                     <button onClick={handleStartChat} className="start-button">
@@ -398,21 +369,11 @@ export default function GeminiChat() {
         }
       `}</style>
             <div className="chat-container">
-                <div
-                    className="message-list"
-                    ref={messageListRef}
-                    role="log"
-                    aria-live="polite"
-                >
+                <div className="message-list">
                     {messages.map((message, index) => (
                         <div
                             key={index}
                             className={`message ${message.sender}`}
-                            aria-label={
-                                message.sender === "bot"
-                                    ? "Bot message"
-                                    : "User message"
-                            }
                         >
                             {message.sender === "bot" ? (
                                 <TypewriterMessage text={message.text} />
@@ -422,7 +383,7 @@ export default function GeminiChat() {
                         </div>
                     ))}
                     {isLoading && (
-                        <div className="message bot" aria-label="Bot is typing">
+                        <div className="message bot">
                             <div className="loading-indicator">
                                 <span></span>
                                 <span></span>
@@ -430,23 +391,24 @@ export default function GeminiChat() {
                             </div>
                         </div>
                     )}
+                    <div ref={messagesEndRef} />
                 </div>
                 <div className="input-area">
                     <input
                         type="text"
                         value={inputValue}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                            setInputValue(e.target.value)
-                        }
-                        onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) =>
-                            e.key === "Enter" && handleSendMessage()
+                        onChange={(e) => setInputValue(e.target.value)}
+                        onKeyDown={(e) =>
+                            e.key === "Enter" &&
+                            !isLoading &&
+                            handleSendMessage()
                         }
                         placeholder="Type your message..."
-                        aria-label="Type your message"
+                        disabled={isLoading}
                     />
                     <button
                         onClick={handleSendMessage}
-                        aria-label="Send message"
+                        disabled={isLoading || !inputValue.trim()}
                     >
                         Send
                     </button>
@@ -455,4 +417,3 @@ export default function GeminiChat() {
         </>
     )
 }
-
