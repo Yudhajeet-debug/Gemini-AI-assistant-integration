@@ -23,4 +23,4 @@ This was entirely written by AI — Jules started it, Copilot patched it, and no
 // IMPORTANT: Replace with your actual API key
 const API_KEY = "YOUR_GEMINI_API_KEY"
 ```
-- Integrate it into your project and start chatting away like it’s 2049. Bonus points if you pretend it’s sentient 🤖
+- Integrate it into your project and start chatting away like it’s 2049. Bonus points if you pretend it’s sentient! 🤖
