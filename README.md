@@ -4,8 +4,8 @@ Welcome to the magical land of chatbot integration, where AI does the heavy lift
 
 Created by Jules — an experiment by **Google** — and debugged by GitHub Copilot (who still hasn’t unionized 🪧). Here's what this glorious mess does:
 
-1. 🕵️‍♂️ Asks the user's name and gender. Because personalization is the illusion of caring.
-2. 🧙‍♀️ Magically transforms the page to reveal a text box where you type your deepest questions and get answers. Or vague AI ramblings. Same thing.
+1) 🕵️‍♂️ Asks the user's name and gender. Because personalization is the illusion of caring.
+2) 🧙‍♀️ Magically transforms the page to reveal a text box where you type your deepest questions and get answers. Or vague AI ramblings. Same thing.
 
 Yep, that’s it. No rocket science. The assistant might even call you by name if it’s feeling generous.
 
@@ -23,4 +23,5 @@ This was entirely written by AI — Jules started it, Copilot patched it, and no
 // IMPORTANT: Replace with your actual API key
 const API_KEY = "YOUR_GEMINI_API_KEY"
 ```
-- Integrate it into your project and start chatting away like it’s 2049. Bonus points if you pretend it’s sentient! 🤖
+Also, there's a `systeminstructions` component in the file. Want it? 😎 Then fill it up! 🤘🏽 But if you don't? 👎🏽 Then just delete it! 🔥
+- Integrate the whole thing into your project and start chatting away like it’s 2049. Bonus points if you pretend it’s sentient! 🤖
