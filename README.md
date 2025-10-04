@@ -17,7 +17,7 @@ This was entirely written by AI — Jules started it, Copilot patched it, and no
 
 ## How to Use It 🛠️
 
-1. Paste your own API key into this sacred block of code (don’t forget to actually replace it, genius):
+1. Paste your own API key into this sacred block of code in the file (don’t forget to actually replace it, genius):
 
 ```tsx
 // IMPORTANT: Replace with your actual API key
